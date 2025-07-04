@@ -1,13 +1,23 @@
 document.addEventListener('DOMContentLoaded', () => {
   const startButton = document.getElementById('startButton');
+  
   if (startButton) {
-    startButton.addEventListener('click', () => {
-      console.log('Start button clicked');
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0] && tabs[0].id) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'start' });
+    startButton.addEventListener('click', async () => {
+      try {
+        // Get the active tab
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        
+        if (tab.id) {
+          // Send start message to content script
+          chrome.tabs.sendMessage(tab.id, { action: 'start' });
+          console.log('Start message sent to content script');
+          
+          // Close popup after starting
+          window.close();
         }
-      });
+      } catch (error) {
+        console.error('Error sending start message:', error);
+      }
     });
   }
 });
