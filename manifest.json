@@ -16,7 +16,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.indeed.com/cmp/*"],
+      "matches": ["https://employers.indeed.com/candidates/view*"],
       "js": ["content.js"]
     }
   ],

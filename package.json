@@ -4,13 +4,14 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "esbuild background.ts content.ts --bundle --outdir=. --watch"
+    "start": "esbuild background.ts content.ts popup.ts --bundle --outdir=. --watch"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/chrome": "^0.0.329",
     "esbuild": "^0.25.5"
   }
 }
