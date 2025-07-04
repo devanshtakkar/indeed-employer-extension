@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Indeed Employer Scrape",
+  "version": "1.0",
+  "description": "A Chrome extension to scrape employer data from Indeed.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.indeed.com/"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.indeed.com/cmp/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
