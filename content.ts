@@ -3,6 +3,7 @@ import { JOB_SERVER_URL } from './CONSTANTS';
 // Global variable to track processing state
 let isProcessing = false;
 let jobPostingId: number | null = null;
+let consecutiveFailures = 0; // Track consecutive network failures
 
 // Check if processing was already running when page loads
 chrome.storage.local.get(['isProcessing', 'processingJobId'], (result) => {
@@ -54,7 +55,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 function waitForPageToLoad(expectedUrlPattern?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
-    const timeout = 5000; // 5 seconds timeout
+    const timeout = 10000; // 10 seconds timeout
     const pollInterval = 100; // Check every 100ms
     
     const currentUrl = window.location.href;
@@ -97,7 +98,7 @@ function waitForNavigationComplete(): Promise<void> {
   return new Promise((resolve) => {
     const originalUrl = window.location.href;
     let checkCount = 0;
-    const maxChecks = 50; // 5 seconds max (50 * 100ms)
+    const maxChecks = 100; // 10 seconds max (100 * 100ms)
     
     const checkNavigation = () => {
       checkCount++;
@@ -174,8 +175,41 @@ async function processPageAndNavigate() {
       });
       const data = await response.json();
       console.log('Successfully sent profile data:', data);
+      
+      // Check if the response indicates failure
+      if (data && data.success === false) {
+        consecutiveFailures++;
+        console.log(`Network request failed. Consecutive failures: ${consecutiveFailures}`);
+        
+        // Stop processing after 4 consecutive failures
+        if (consecutiveFailures >= 4) {
+          console.log('Stopping script due to 4 consecutive network failures');
+          isProcessing = false;
+          chrome.storage.local.set({
+            isProcessing: false,
+            processingJobId: null
+          });
+          return;
+        }
+      } else {
+        // Reset counter on successful request
+        consecutiveFailures = 0;
+      }
     } catch (error) {
+      consecutiveFailures++;
       console.error('Error sending profile data:', error);
+      console.log(`Network request failed. Consecutive failures: ${consecutiveFailures}`);
+      
+      // Stop processing after 4 consecutive failures
+      if (consecutiveFailures >= 4) {
+        console.log('Stopping script due to 4 consecutive network failures');
+        isProcessing = false;
+        chrome.storage.local.set({
+          isProcessing: false,
+          processingJobId: null
+        });
+        return;
+      }
     }
   } else {
     console.log("Could not find candidate profile container. Ending loop.");
