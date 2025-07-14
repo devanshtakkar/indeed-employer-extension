@@ -1,3 +1,5 @@
+import { JOB_SERVER_URL } from './CONSTANTS';
+
 // Global variable to track processing state
 let isProcessing = false;
 let jobPostingId: number | null = null;
@@ -149,6 +151,7 @@ async function processPageAndNavigate() {
   }
 
   const profileContainer = document.getElementById('candidateProfileContainer');
+  console.log('profileContainer', profileContainer);
   if (profileContainer) {
     const profileData = profileContainer.innerHTML;
     
