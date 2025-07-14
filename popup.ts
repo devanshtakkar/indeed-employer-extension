@@ -18,6 +18,9 @@ interface JobPostingsResponse {
   data?: JobPosting[];
 }
 
+// Global variable to store job postings
+let jobPostings: JobPosting[] = [];
+
 document.addEventListener('DOMContentLoaded', () => {
   const startButton = document.getElementById('startButton') as HTMLButtonElement;
   const jobSelect = document.getElementById('jobSelect') as HTMLSelectElement;
@@ -28,7 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Enable start button only when a job is selected
   jobSelect.addEventListener('change', () => {
-    startButton.disabled = !jobSelect.value;
+    const hasSelection = jobSelect.value && jobSelect.value !== "";
+    startButton.disabled = !hasSelection;
+    hideError(); // Clear any previous errors when selection changes
   });
   
   if (startButton) {
@@ -40,7 +45,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       
+      // Disable button and show loading state
+      startButton.disabled = true;
+      const originalText = startButton.textContent;
+      startButton.textContent = 'Starting...';
+      
       try {
+        // Find the selected job posting data
+        const selectedJobData = await getSelectedJobData(parseInt(selectedJobId));
+        
+        if (!selectedJobData) {
+          showError('Selected job posting not found');
+          return;
+        }
+        
+        // Store the selected job posting in Chrome local storage
+        await chrome.storage.local.set({
+          selectedJobPosting: selectedJobData,
+          jobPostingId: parseInt(selectedJobId)
+        });
+        
+        console.log('Job posting stored in local storage:', selectedJobData);
+        
         // Get the active tab
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         
@@ -48,16 +74,19 @@ document.addEventListener('DOMContentLoaded', () => {
           // Send start message to content script with selected job ID
           chrome.tabs.sendMessage(tab.id, { 
             action: 'start',
-            jobPostingId: parseInt(selectedJobId)
+            jobPostingId: parseInt(selectedJobId),
+            jobPosting: selectedJobData
           });
           console.log('Start message sent to content script with job ID:', selectedJobId);
           
-          // Close popup after starting
-          window.close();
         }
       } catch (error) {
         console.error('Error sending start message:', error);
         showError('Error starting processing. Please try again.');
+        
+        // Re-enable button and restore text on error
+        startButton.disabled = !jobSelect.value;
+        startButton.textContent = originalText || 'Start Processing';
       }
     });
   }
@@ -89,10 +118,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  function populateJobSelect(jobPostings: JobPosting[]) {
+  function populateJobSelect(jobPostingsData: JobPosting[]) {
+    // Store job postings globally
+    jobPostings = jobPostingsData;
+    
     jobSelect.innerHTML = '<option value="">Select a job posting...</option>';
     
-    jobPostings.forEach(job => {
+    jobPostingsData.forEach(job => {
       const option = document.createElement('option');
       option.value = job.id.toString();
       option.textContent = `${job.job_title} (${job.job_location})`;
@@ -100,6 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     jobSelect.disabled = false;
+  }
+  
+  function getSelectedJobData(jobId: number): JobPosting | null {
+    return jobPostings.find(job => job.id === jobId) || null;
   }
   
   function showError(message: string) {
