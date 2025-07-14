@@ -23,11 +23,16 @@ let jobPostings: JobPosting[] = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   const startButton = document.getElementById('startButton') as HTMLButtonElement;
+  const stopButton = document.getElementById('stopButton') as HTMLButtonElement;
   const jobSelect = document.getElementById('jobSelect') as HTMLSelectElement;
   const jobError = document.getElementById('jobError') as HTMLDivElement;
+  const statusInfo = document.getElementById('statusInfo') as HTMLDivElement;
   
   // Load job postings when popup opens
   loadJobPostings();
+  
+  // Check current processing state
+  checkProcessingState();
   
   // Enable start button only when a job is selected
   jobSelect.addEventListener('change', () => {
@@ -62,7 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Store the selected job posting in Chrome local storage
         await chrome.storage.local.set({
           selectedJobPosting: selectedJobData,
-          jobPostingId: parseInt(selectedJobId)
+          jobPostingId: parseInt(selectedJobId),
+          isProcessing: true,
+          processingJobId: parseInt(selectedJobId)
         });
         
         console.log('Job posting stored in local storage:', selectedJobData);
@@ -79,6 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           console.log('Start message sent to content script with job ID:', selectedJobId);
           
+          // Update UI to show processing state
+          updateUIForState(true, selectedJobData);
         }
       } catch (error) {
         console.error('Error sending start message:', error);
@@ -87,6 +96,34 @@ document.addEventListener('DOMContentLoaded', () => {
         // Re-enable button and restore text on error
         startButton.disabled = !jobSelect.value;
         startButton.textContent = originalText || 'Start Processing';
+      }
+    });
+  }
+  
+  // Stop button event listener
+  if (stopButton) {
+    stopButton.addEventListener('click', async () => {
+      try {
+        // Send stop message to content script
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        
+        if (tab.id) {
+          chrome.tabs.sendMessage(tab.id, { action: 'stop' });
+          console.log('Stop message sent to content script');
+        }
+        
+        // Update local storage
+        await chrome.storage.local.set({
+          isProcessing: false,
+          processingJobId: null
+        });
+        
+        // Update UI
+        updateUIForState(false);
+        
+      } catch (error) {
+        console.error('Error sending stop message:', error);
+        showError('Error stopping processing. Please try again.');
       }
     });
   }
@@ -146,5 +183,45 @@ document.addEventListener('DOMContentLoaded', () => {
   function hideError() {
     jobError.style.display = 'none';
     jobError.textContent = '';
+  }
+  
+  async function checkProcessingState() {
+    try {
+      const result = await chrome.storage.local.get(['isProcessing', 'processingJobId', 'selectedJobPosting']);
+      
+      if (result.isProcessing && result.processingJobId) {
+        updateUIForState(true, result.selectedJobPosting);
+      } else {
+        updateUIForState(false);
+      }
+    } catch (error) {
+      console.error('Error checking processing state:', error);
+    }
+  }
+  
+  function updateUIForState(isProcessing: boolean, selectedJob?: any) {
+    if (isProcessing) {
+      // Show processing state
+      startButton.classList.add('hidden');
+      stopButton.classList.remove('hidden');
+      statusInfo.style.display = 'block';
+      jobSelect.disabled = true;
+      
+      if (selectedJob) {
+        statusInfo.textContent = `Processing: ${selectedJob.job_title} (${selectedJob.job_location})`;
+      } else {
+        statusInfo.textContent = 'Processing applicants...';
+      }
+    } else {
+      // Show idle state
+      startButton.classList.remove('hidden');
+      stopButton.classList.add('hidden');
+      statusInfo.style.display = 'none';
+      jobSelect.disabled = false;
+      
+      // Re-enable start button if job is selected
+      startButton.disabled = !jobSelect.value;
+      startButton.textContent = 'Start Processing';
+    }
   }
 });

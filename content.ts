@@ -1,6 +1,50 @@
+// Global variable to track processing state
+let isProcessing = false;
+let jobPostingId: number | null = null;
+
+// Check if processing was already running when page loads
+chrome.storage.local.get(['isProcessing', 'processingJobId'], (result) => {
+  if (result.isProcessing && result.processingJobId) {
+    isProcessing = result.isProcessing;
+    jobPostingId = result.processingJobId;
+    console.log('Resuming processing for job posting ID:', jobPostingId);
+    
+    // Wait a moment for page to load, then continue processing
+    setTimeout(() => {
+      if (isProcessing) {
+        processPageAndNavigate();
+      }
+    }, 1000);
+  }
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'start') {
-    processPageAndNavigate();
+    if (request.jobPostingId) {
+      jobPostingId = request.jobPostingId;
+      isProcessing = true;
+      
+      // Store processing state in local storage
+      chrome.storage.local.set({
+        isProcessing: true,
+        processingJobId: jobPostingId
+      });
+      
+      console.log('Starting processing for job posting ID:', jobPostingId);
+      processPageAndNavigate();
+    } else {
+      console.error('No job posting ID provided');
+    }
+  } else if (request.action === 'stop') {
+    console.log('Stop signal received');
+    isProcessing = false;
+    jobPostingId = null;
+    
+    // Update processing state in local storage
+    chrome.storage.local.set({
+      isProcessing: false,
+      processingJobId: null
+    });
   }
 });
 
@@ -98,16 +142,32 @@ function waitForNavigationComplete(): Promise<void> {
 }
 
 async function processPageAndNavigate() {
+  // Check if processing should continue
+  if (!isProcessing) {
+    console.log('Processing stopped by user');
+    return;
+  }
+
   const profileContainer = document.getElementById('candidateProfileContainer');
   if (profileContainer) {
     const profileData = profileContainer.innerHTML;
+    
+    // Check if we have a job posting ID
+    if (!jobPostingId) {
+      console.error('No job posting ID available. Cannot process profile.');
+      return;
+    }
+    
     try {
-      const response = await fetch('http://localhost:3000', {
+      const response = await fetch(`${JOB_SERVER_URL}/indeed-applicant`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ profile: profileData }),
+        body: JSON.stringify({ 
+          profile: profileData,
+          job_posting_id: jobPostingId
+        }),
       });
       const data = await response.json();
       console.log('Successfully sent profile data:', data);
@@ -117,6 +177,12 @@ async function processPageAndNavigate() {
   } else {
     console.log("Could not find candidate profile container. Ending loop.");
     return; // End the loop if container not found
+  }
+
+  // Check again before continuing navigation
+  if (!isProcessing) {
+    console.log('Processing stopped during profile submission');
+    return;
   }
 
   // Now, find and click the next button
@@ -132,12 +198,22 @@ async function processPageAndNavigate() {
       await waitForNavigationComplete();
       console.log("Navigation completed, continuing...");
       
-      // Continue the loop
-      processPageAndNavigate();
+      // Continue the loop only if still processing
+      if (isProcessing) {
+        processPageAndNavigate();
+      } else {
+        console.log('Processing stopped during navigation');
+      }
     } catch (error) {
       console.error("Error waiting for navigation:", error);
     }
   } else {
     console.log("Next button not found. Ending loop.");
+    // Update processing state when ending
+    isProcessing = false;
+    chrome.storage.local.set({
+      isProcessing: false,
+      processingJobId: null
+    });
   }
 }
