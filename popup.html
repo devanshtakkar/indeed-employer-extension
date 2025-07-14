@@ -1,22 +1,91 @@
 <html>
 <head>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 320px;
+      padding: 16px;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+    
+    label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      display: block;
+    }
+    
+    select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      background-color: white;
+      min-height: 36px;
+    }
+    
+    select:disabled {
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
+    
     button {
+      width: 100%;
       background-color: #4CAF50;
       border: none;
       color: white;
-      padding: 15px 32px;
+      padding: 12px 16px;
       text-align: center;
       text-decoration: none;
-      display: inline-block;
+      display: block;
       font-size: 16px;
-      margin: 4px 2px;
+      margin: 8px 0 0 0;
       cursor: pointer;
+      border-radius: 4px;
+      min-height: 44px;
+    }
+    
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    
+    .error {
+      color: red;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    
+    .loading {
+      color: #666;
+      font-size: 12px;
+      font-style: italic;
     }
   </style>
 </head>
 <body>
-  <button id="startButton">Start</button>
+  <div class="container">
+    <div>
+      <label for="jobSelect">Select Job Posting:</label>
+      <select id="jobSelect" disabled>
+        <option value="">Loading job postings...</option>
+      </select>
+      <div id="jobError" class="error" style="display: none;"></div>
+    </div>
+    
+    <button id="startButton" disabled>Start Processing</button>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>
