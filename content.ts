@@ -12,6 +12,13 @@ chrome.storage.local.get(['isProcessing', 'processingJobId'], (result) => {
     jobPostingId = result.processingJobId;
     console.log('Resuming processing for job posting ID:', jobPostingId);
     
+    // Send resume message to popup
+    chrome.runtime.sendMessage({
+      action: 'statusUpdate',
+      data: { message: 'Processing resumed...', success: true },
+      isError: false
+    });
+    
     // Wait a moment for page to load, then continue processing
     setTimeout(() => {
       if (isProcessing) {
@@ -47,6 +54,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.storage.local.set({
       isProcessing: false,
       processingJobId: null
+    });
+    
+    // Send stop message to popup
+    chrome.runtime.sendMessage({
+      action: 'statusUpdate',
+      data: { message: 'Processing stopped', success: false },
+      isError: false
     });
   }
 });
@@ -176,6 +190,13 @@ async function processPageAndNavigate() {
       const data = await response.json();
       console.log('Successfully sent profile data:', data);
       
+      // Send status update to popup
+      chrome.runtime.sendMessage({
+        action: 'statusUpdate',
+        data: data,
+        isError: false
+      });
+      
       // Check if the response indicates failure
       if (data && data.success === false) {
         consecutiveFailures++;
@@ -189,6 +210,13 @@ async function processPageAndNavigate() {
             isProcessing: false,
             processingJobId: null
           });
+          
+          // Send failure message to popup
+          chrome.runtime.sendMessage({
+            action: 'statusUpdate',
+            data: { message: 'Processing stopped - too many consecutive failures', success: false },
+            isError: true
+          });
           return;
         }
       } else {
@@ -200,6 +228,13 @@ async function processPageAndNavigate() {
       console.error('Error sending profile data:', error);
       console.log(`Network request failed. Consecutive failures: ${consecutiveFailures}`);
       
+      // Send error status update to popup
+      chrome.runtime.sendMessage({
+        action: 'statusUpdate',
+        data: { message: error instanceof Error ? error.message : 'Network error' },
+        isError: true
+      });
+      
       // Stop processing after 4 consecutive failures
       if (consecutiveFailures >= 4) {
         console.log('Stopping script due to 4 consecutive network failures');
@@ -207,6 +242,13 @@ async function processPageAndNavigate() {
         chrome.storage.local.set({
           isProcessing: false,
           processingJobId: null
+        });
+        
+        // Send failure message to popup
+        chrome.runtime.sendMessage({
+          action: 'statusUpdate',
+          data: { message: 'Processing stopped - too many consecutive failures', success: false },
+          isError: true
         });
         return;
       }
@@ -251,6 +293,13 @@ async function processPageAndNavigate() {
     chrome.storage.local.set({
       isProcessing: false,
       processingJobId: null
+    });
+    
+    // Send completion message to popup
+    chrome.runtime.sendMessage({
+      action: 'statusUpdate',
+      data: { message: 'Processing completed - no more applicants', success: true },
+      isError: false
     });
   }
 }

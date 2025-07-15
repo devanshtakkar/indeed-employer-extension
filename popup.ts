@@ -27,12 +27,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const jobSelect = document.getElementById('jobSelect') as HTMLSelectElement;
   const jobError = document.getElementById('jobError') as HTMLDivElement;
   const statusInfo = document.getElementById('statusInfo') as HTMLDivElement;
+  const requestStatus = document.getElementById('requestStatus') as HTMLDivElement;
+  const requestStatusContent = document.getElementById('requestStatusContent') as HTMLDivElement;
   
   // Load job postings when popup opens
   loadJobPostings();
   
   // Check current processing state
   checkProcessingState();
+  
+  // Listen for status updates from content script
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'statusUpdate') {
+      updateRequestStatus(message.data, message.isError);
+    }
+  });
+  
+  function clearRequestStatus() {
+    requestStatus.style.display = 'none';
+    requestStatusContent.innerHTML = '';
+  }
   
   // Enable start button only when a job is selected
   jobSelect.addEventListener('change', () => {
@@ -73,6 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         console.log('Job posting stored in local storage:', selectedJobData);
+        
+        // Clear previous status and show starting message
+        clearRequestStatus();
+        updateRequestStatus({ message: 'Processing started...', success: true }, false);
         
         // Get the active tab
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -120,6 +138,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Update UI
         updateUIForState(false);
+        
+        // Show stop message
+        updateRequestStatus({ message: 'Processing stopped by user', success: false }, false);
         
       } catch (error) {
         console.error('Error sending stop message:', error);
@@ -222,6 +243,50 @@ document.addEventListener('DOMContentLoaded', () => {
       // Re-enable start button if job is selected
       startButton.disabled = !jobSelect.value;
       startButton.textContent = 'Start Processing';
+    }
+  }
+
+  function updateRequestStatus(data: any, isError: boolean) {
+    requestStatus.style.display = 'block';
+    
+    if (isError) {
+      requestStatus.className = 'status-error';
+      requestStatusContent.innerHTML = `
+        <strong>Request Failed</strong>
+        <div class="status-details">
+          Error: ${data.message || 'Network error'}
+        </div>
+        <div class="status-timestamp">${new Date().toLocaleTimeString()}</div>
+      `;
+    } else {
+      requestStatus.className = data.success ? 'status-success' : 'status-warning';
+      
+      if (data.success && data.data) {
+        const applicant = data.data.applicant;
+        const jobPosting = data.data.jobPosting;
+        
+        requestStatusContent.innerHTML = `
+          <strong>${data.message}</strong>
+          <div class="status-details">
+            <strong>Applicant:</strong>
+            <div class="field">Name: ${applicant.firstName} ${applicant.lastName}</div>
+            <div class="field">Email: ${applicant.email || 'N/A'}</div>
+            <div class="field">Phone: ${applicant.phone || 'N/A'}</div>
+            <div class="field">ID: ${applicant.id}</div>
+            
+            <strong style="margin-top: 8px;">Job Posting:</strong>
+            <div class="field">Title: ${jobPosting.title}</div>
+            <div class="field">Location: ${jobPosting.location}</div>
+            <div class="field">Job ID: ${jobPosting.id}</div>
+          </div>
+          <div class="status-timestamp">${new Date().toLocaleTimeString()}</div>
+        `;
+      } else {
+        requestStatusContent.innerHTML = `
+          <strong>${data.message || 'Request processed'}</strong>
+          <div class="status-timestamp">${new Date().toLocaleTimeString()}</div>
+        `;
+      }
     }
   }
 });

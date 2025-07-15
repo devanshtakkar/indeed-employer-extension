@@ -94,6 +94,58 @@
       font-size: 13px;
       color: #0066cc;
     }
+    
+    #requestStatus {
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+    
+    .status-success {
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    
+    .status-error {
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    
+    .status-warning {
+      background-color: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+    }
+    
+    .status-details {
+      margin-top: 8px;
+      padding: 8px;
+      background-color: rgba(0,0,0,0.05);
+      border-radius: 3px;
+      font-size: 11px;
+      text-align: left;
+      line-height: 1.4;
+    }
+    
+    .status-details strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    .status-details .field {
+      margin-bottom: 2px;
+    }
+    
+    .status-timestamp {
+      margin-top: 6px;
+      font-size: 10px;
+      color: #666;
+      text-align: right;
+    }
   </style>
 </head>
 <body>
@@ -111,6 +163,10 @@
     
     <div id="statusInfo" class="loading" style="display: none;">
       Processing applicants...
+    </div>
+    
+    <div id="requestStatus">
+      <div id="requestStatusContent"></div>
     </div>
   </div>
   <script src="popup.js"></script>
