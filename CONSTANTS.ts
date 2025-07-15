@@ -1,1 +1,1 @@
-export const JOB_SERVER_URL = "http://localhost:3000";
+export const JOB_SERVER_URL = "https://linked.anisht.com";

@@ -1,5 +1,5 @@
 // Import the job server URL
-const JOB_SERVER_URL = "http://localhost:3000";
+import { JOB_SERVER_URL } from './CONSTANTS';
 
 interface JobPosting {
   id: number;
